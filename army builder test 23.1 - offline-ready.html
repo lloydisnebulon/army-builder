@@ -15,10 +15,10 @@
 html,body{height:100%}
 body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--text);
   background:linear-gradient(180deg,var(--bg),var(--bg-2) 60%);overflow-x:hidden}
-.topbar{display:grid;grid-template-columns:1fr auto;align-items:center;gap:12px;padding:12px 16px;
+.topbar{display:grid;grid-template-columns:1fr;align-items:center;gap:12px;padding:12px 16px;
   position:sticky;top:0;z-index:50;background:#0d311b;border-bottom:1px solid var(--border)}
-.brand{font-weight:700;font-size:18px}
-.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:flex-end}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:center}
+.toolbar .control { width: 100%; max-width: 600px; }
 .control{background:#103b22;color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px 12px;min-width:220px;outline:none}
 .file-btn{display:inline-flex;align-items:center;gap:8px;background:#114426;border:1px solid var(--border);padding:10px 12px;border-radius:10px;cursor:pointer}
 .file-btn input{display:none}
@@ -79,10 +79,21 @@ body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-ser
              linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
   overflow:hidden;}
 .army-list{display:none;padding:12px 2px 2px 2px}
-.army-list .unit-card{margin:8px}
 
 /* Kort i lerret */
-.pile{position:absolute;width:var(--card-w);height:var(--card-h);border-radius:10px;user-select:none;transform-origin:top left;}
+.canvas {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--gap);
+  padding: var(--gap);
+}
+.pile{
+  position:relative;
+  width:100%;
+  padding-top: 141.66%; /* Aspect ratio 340/240 = 1.4166 */
+  border-radius:10px;
+  user-select:none;
+}
 .pile img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:12px;box-shadow:0 10px 20px rgba(0,0,0,.35);background:#1f2a1f}
 .stack-badge{position:absolute; top:-12px; right:8px; min-width:32px; height:30px; padding:0 8px;
   background:linear-gradient(180deg,#ffd447,#ffb700); color:#222; font-weight:800; border-radius:999px;
@@ -146,15 +157,8 @@ body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-ser
 <body>
 
 <header class="topbar">
-  <div class="brand">Axis & Allies Army Builder</div>
   <div class="toolbar">
     <input id="searchInput" class="control" placeholder="Søk navn / egenskaper…" />
-    <button id="tryOnlineBtn" class="btn btn-primary">Prøv auto-lasting</button>
-    <button id="pasteHtmlBtn" class="btn" title="Lim inn HTML-kilde fra AAM Cardbase">Lim inn HTML</button><button id="saveOfflineBtn" class="btn" title="Lagre som offline-data (i nettleseren)">Oppdater offline-data</button>
-    <label class="file-btn" title="Velg lagret HTML/JSON fra AAM Cardbase">
-      <input id="fileInput" type="file" accept=".json,.txt,.html,.htm" />Velg fil
-    </label>
-    <span id="autoLoadStatus" class="status ok"></span>
   </div>
 </header>
 
@@ -274,7 +278,6 @@ body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-ser
       <div class="army-list" id="listX"></div>
     </div>
   </section>
-</template>
 
 <!-- Modal -->
 <div class="modal" id="cardModal" aria-hidden="true">
@@ -302,15 +305,7 @@ body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-ser
 </div>
 
 <script>
-/* ------- Konstanter/proxy ------- */
-const base = 'https://aamcardbase.com';
-const AAM_URL = base + '/army_builder.aspx';
-const PROXIES = [
-  (u)=>'https://cors.isomorphic-git.org/' + u,
-  (u)=>'https://corsproxy.io/?' + new URLSearchParams({ url:u }),
-  (u)=>'https://thingproxy.freeboard.io/fetch/' + u,
-  (u)=>'https://r.jina.ai/http://'+ u.replace(/^https?:\/\//,'')
-];
+/* ------- Konstanter ------- */
 const SPECIAL_KEY = 'Support, Fortifications & Obstacles';
 const KNOWN_NATIONS = [
   'Australia','Belgium','Bulgaria','Canada','China','Croatia','Finland','France','Germany','Greece','Hungary','Italy','Japan',
@@ -334,8 +329,17 @@ document.addEventListener('DOMContentLoaded', () => {
   ['A','B','C'].forEach(code => { boards.set(code, new Map()); totals.set(code, 0); });
   hookArmy('A'); hookArmy('B'); hookArmy('C');
   wireUI();
-  const embedded = getEmbeddedUnitsJSON();if(embedded && embedded.length){ loadUnits(embedded); setStatus('Bruker offline-data'); } else { autoFetchAll(); }
-  restoreAutosave();
+
+  fetch('units.json')
+    .then(response => response.json())
+    .then(units => {
+      loadUnits(units);
+      restoreAutosave();
+    })
+    .catch(error => {
+      console.error('Error loading units:', error);
+      byId('available-units').innerHTML = '<div class="muted">Kunne ikke laste enhetsdata.</div>';
+    });
 });
 
 /* ------- UI wiring ------- */
@@ -353,168 +357,10 @@ function wireUI(){
     byId('yearTo').value=1945;
     renderAvailable();
   });
-  byId('tryOnlineBtn').addEventListener('click', autoFetchAll);
-  byId('saveOfflineBtn').addEventListener('click', offlineSnapshotFlow);
-  byId('pasteHtmlBtn').addEventListener('click', async ()=>{
-    const html = prompt('Lim inn HTML fra '+AAM_URL);
-    if(!html) return;
-    loadUnits(parseUnitsFromHTML(html));
-  });
-  byId('fileInput').addEventListener('change', async (ev)=>{
-    const f=ev.target.files?.[0]; if(!f) return;
-    const text=await f.text();
-    if(/\.(json)$/i.test(f.name)){ const arr=JSON.parse(text); loadUnits(arr); }
-    else { loadUnits(parseUnitsFromHTML(text)); }
-    ev.target.value='';
-  });
+
   byId('addArmyBtn').addEventListener('click', addArmyPanel);
   byId('modalClose').addEventListener('click', closeModal);
   byId('cardModal').addEventListener('click', e=>{ if(e.target.id==='cardModal') closeModal(); });
-}
-
-
-/* ------- Offline dataset ------- */
-const OFFLINE_KEY = 'aam_embedded_units_v1';
-
-function getEmbeddedUnitsJSON(){
-  try{
-    const tag = document.getElementById('EMBED_UNITS');
-    if(tag && tag.textContent && tag.textContent.trim().startsWith('[')){
-      return JSON.parse(tag.textContent);
-    }
-  }catch{}
-  try{
-    const raw = localStorage.getItem(OFFLINE_KEY);
-    if(raw){ return JSON.parse(raw); }
-  }catch{}
-  return null;
-}
-
-function setEmbeddedUnitsJSON(arr){
-  try{ localStorage.setItem(OFFLINE_KEY, JSON.stringify(arr)); }catch{}
-}
-
-async function offlineSnapshotFlow(){
-  const choice = confirm('Vil du lime inn HTML-kilde fra AAM nå? (Velg Avbryt for å laste fra fil i neste dialog)');
-  if(choice){
-    const html = prompt('Lim inn HTML fra '+AAM_URL);
-    if(!html) return;
-    const arr = parseUnitsFromHTML(html);
-    if(!arr || !arr.length){ alert('Fant ingen enheter i HTMLen.'); return; }
-    setEmbeddedUnitsJSON(arr);
-    loadUnits(arr);
-    setStatus('Offline-data oppdatert.');
-  }else{
-    const input = document.createElement('input');
-    input.type='file'; input.accept='.html,.htm,.txt,.json';
-    input.onchange = async (ev)=>{
-      const f = ev.target.files?.[0]; if(!f) return;
-      const text = await f.text();
-      let arr = [];
-      try{
-        if(/\.json$/i.test(f.name)) arr = JSON.parse(text);
-        else arr = parseUnitsFromHTML(text);
-      }catch(e){ alert('Kunne ikke lese filen: '+(e?.message||'ukjent')); return; }
-      if(!arr.length){ alert('Fant ingen enheter i filen.'); return; }
-      setEmbeddedUnitsJSON(arr);
-      loadUnits(arr);
-      setStatus('Offline-data oppdatert.');
-    };
-    input.click();
-  }
-}
-
-/* ------- Last fra nett ------- */
-async function autoFetchAll(){
-  setStatus('Laster fra nett …');
-  for(const make of PROXIES){
-    try{
-      const raw = await (await fetch(make(AAM_URL))).text();
-      loadUnits(parseUnitsFromHTML(raw));
-      setStatus('Auto-lasting OK.');
-      return;
-    }catch(e){ console.warn('Proxy feilet:', e); }
-  }
-  setStatus('Auto-lasting feilet. Bruk "Lim inn HTML" eller "Velg fil".');
-  byId('available-units').innerHTML = '<div class="muted">Auto-lasting ble blokkert. Bruk "Lim inn HTML" eller "Velg fil".</div>';
-}
-function setStatus(msg){ byId('autoLoadStatus').textContent = msg || ''; }
-
-/* ------- Parser (én last) ------- */
-function parseUnitsFromHTML(html){
-  const doc = new DOMParser().parseFromString(html, 'text/html');
-
-  // nasjoner fra checkbox-seksjonen
-  const cbLabels = [...doc.querySelectorAll('label, span, td, div')].map(el=>(el.textContent||'').trim());
-  for(const n of KNOWN_NATIONS){
-    if(cbLabels.some(t => new RegExp('\\b'+n.replace(/\s+/g,'\\s+')+'\\b','i').test(t))) nationSet.add(n);
-  }
-  nationSet.add(SPECIAL_KEY);
-
-  // finn tabell
-  let target = null;
-  for(const t of [...doc.querySelectorAll('table')]){
-    if(t.querySelector('a[href*="unit_AAM.aspx"]')) { target = t; break; }
-  }
-  if(!target) return [];
-
-  // header mapping
-  const header = [...target.querySelectorAll('thead th, thead td')].map(th => (th.textContent||'').trim().toLowerCase());
-  const idx = {
-    type: header.findIndex(h=>/category|type/i.test(h)),
-    year: header.findIndex(h=>/year/i.test(h)),
-    cost: header.findIndex(h=>/cost|points|pts/i.test(h)),
-    defspd: header.findIndex(h=>/def|speed|def\/spd/i.test(h)),
-    aiav: header.findIndex(h=>/ai|av|ai\/av/i.test(h)),
-    abilities: header.findIndex(h=>/abilit|special/i.test(h))
-  };
-
-  const units = [];
-  let currentNation = '';
-  for(const tr of target.querySelectorAll('tbody tr, tr')){
-    const link = tr.querySelector('a[href*="unit_AAM.aspx"]');
-    const tds = [...tr.children];
-
-    // nasjonsbanner?
-    if(tds.length===1 && (!link || !tds[0].querySelector('a'))){
-      const text = (tds[0].textContent||'').trim();
-      const hit = KNOWN_NATIONS.find(n => new RegExp('^'+n.replace(/\s+/g,'\\s+')+'\\b','i').test(text));
-      if(hit){ currentNation = hit; nationSet.add(hit); continue; }
-    }
-
-    if(!link) continue;
-
-    const href = link.getAttribute('href') || '';
-    const name = decodeHTML(link.textContent.trim());
-    if(!/unit_AAM\.aspx\?/i.test(href) || !name) continue;
-
-    const get=(i)=> (i>=0 && tds[i])?tds[i]:null;
-    const txt=(el)=> (el ? decodeHTML(el.textContent.trim()) : '');
-    const clean=(s)=> decodeHTML((s||'').replace(/\s+/g,' ').trim());
-
-    const typeRaw= clean(get(idx.type)?.innerHTML||'');   const type = typeRaw.replace(/<br\s*\/?>/gi,' / ').replace(/\s+/g,' ').trim();
-    const year   = clean(txt(get(idx.year)));
-    const costS  = clean(txt(get(idx.cost)));             const cost = parseFloat(costS.replace(',', '.')) || 0;
-    const defSpdRaw = clean(get(idx.defspd)?.innerHTML||''); const defSpd = defSpdRaw.replace(/<br\s*\/?>/gi,'|');
-    const aiavRaw = clean(get(idx.aiav)?.innerHTML||'');  const aiav = aiavRaw.replace(/<br\s*\/?>/gi,'|');
-    const abRaw = clean(get(idx.abilities)?.innerHTML||''); let abilities = abRaw.replace(/<[^>]+>/g,'').trim();
-
-    const def = (defSpd.split('|')[0]||'').replace(/Def/i,'').trim();
-    const spd = (defSpd.split('|')[1]||'').replace(/Speed/i,'').trim();
-    const ai  = (aiav.split('|')[0]||'').replace(/AI/i,'').trim();
-    const av  = (aiav.split('|')[1]||'').replace(/AV/i,'').trim();
-
-    const absolute = href.startsWith('http') ? href : (base + '/' + href.replace(/^\//,''));
-    const isSpecial = /Obstacle|Fortification|Support/i.test(type);
-    const id = new URL(absolute).searchParams.get('id') || absolute;
-    const nation = isSpecial ? SPECIAL_KEY : (currentNation || '');
-    if(nation) nationSet.add(nation);
-    abilities = decodeHTML(abilities);
-
-    const unit = { id, nation, year, name, href:absolute, type, cost, def, spd, ai, av, abilities };
-    units.push(unit);
-  }
-  return units;
 }
 
 /* ------- Etter parsing ------- */
@@ -602,7 +448,6 @@ function makeUnitRow(u){
       <div class="row stats-actions" style="margin-bottom:6px">
         <div>AI: ${escapeHTML(u.ai||'-')} | AV: ${escapeHTML(u.av||'-')} | Def: ${escapeHTML(u.def||'-')} | Fart: ${escapeHTML(u.spd||'-')}</div>
         <div class="actions">
-          <button class="btn small" data-show-card="${u.id}">Vis kort</button>
         </div>
       </div>
       <div class="row ability-actions">
@@ -616,8 +461,7 @@ function makeUnitRow(u){
       </div>
   `;
 
-  // 'Vis kort' åpner kort-modal
-  card.querySelector('[data-show-card]')?.addEventListener('click', ()=> showCardModal(u));
+  card.addEventListener('dblclick', ()=> showCardModal(u));
 
   // Favoritt stjerne
   card.querySelector('[data-fav]')?.addEventListener('click', (e)=>{
@@ -660,44 +504,32 @@ async function showCardModal(u){
   byId('mDef').textContent = u.def||''; byId('mSpd').textContent = u.spd||'';
   byId('mAI').textContent = u.ai||''; byId('mAV').textContent = u.av||'';
   byId('mAb').textContent = u.abilities||'-';
-  const [img, faq] = await Promise.all([getCardImg(u), getUnitFAQ(u)]);
-  byId('modalImg').src = img || ''; byId('mFAQ').innerHTML = faqToHTML(faq);
+
+  const [img, faq] = await Promise.all([getCardImg(u), getUnitFAQ(u.id)]);
+
+  byId('modalImg').src = img;
+  byId('mFAQ').innerHTML = faqToHTML(faq);
   openModal();
 }
-async function fetchThroughProxies(url){
-  for(const make of PROXIES){ try{ return await (await fetch(make(url))).text(); }catch{} }
-  return null;
+
+function getCardImg(u){
+  // Construct the local image path from the unit name
+  const sanitizedName = (u.name || '').replace(/[\\/*?:"<>|]/g, "");
+  return `images/${sanitizedName}.jpg`;
 }
-async function getCardImg(u){
-  if(imgCache.has(u.id)) return imgCache.get(u.id);
-  const page = (getEmbeddedUnitsJSON()? null : await fetchThroughProxies(u.href).catch(()=>null));
-  if(!page){ imgCache.set(u.id,''); return ''; }
-  const m = page.match(/\/Content\/CardsAAM\/[^"']+\.jpg/i);
-  const full = m ? (base + m[0]) : '';
-  imgCache.set(u.id, full); return full;
-}
-async function getUnitFAQ(u){
-  if(faqCache.has(u.id)) return faqCache.get(u.id);
-  const page = (getEmbeddedUnitsJSON()? null : await fetchThroughProxies(u.href).catch(()=>null));
-  let faq = '';
-  if(page){
-    const doc = new DOMParser().parseFromString(page, 'text/html');
-    let header = [...doc.querySelectorAll('h1,h2,h3,strong,span,p')]
-      .find(el => /Special\s+Abilities\s+Errata\s*&\s*FAQ/i.test(el.textContent||''));
-    if(header){
-      let out=[], n=header.nextElementSibling;
-      while(n){
-        const t=(n.textContent||'').trim();
-        if(/back to search page/i.test(t)) break;
-        if(/^h[1-6]$/i.test(n.tagName)) break;
-        const text=(n.innerHTML||'').replace(/<br\s*\/?>/gi,'\n').replace(/<[^>]+>/g,'').trim();
-        if(text) out.push(text);
-        n=n.nextElementSibling;
-      }
-      faq = decodeHTML(out.join('\n').replace(/\n{3,}/g,'\n\n').trim());
+
+let allFaqs = null; // To cache the loaded faq.json
+async function getUnitFAQ(unitId){
+    if (!allFaqs) {
+        try {
+            const response = await fetch('faq.json');
+            allFaqs = await response.json();
+        } catch (error) {
+            console.error('Failed to load faq.json:', error);
+            return 'Could not load FAQ data.';
+        }
     }
-  }
-  faqCache.set(u.id, faq); return faq;
+    return allFaqs[unitId] || 'No FAQ available for this unit.';
 }
 function faqToHTML(faqText){
   if(!faqText) return '<div class="qaItem"><em>Ingen FAQ funnet.</em></div>';
@@ -782,7 +614,6 @@ function renderArmyList(code){
         <div>AI: ${escapeHTML(u.ai||'-')} | AV: ${escapeHTML(u.av||'-')} | Def: ${escapeHTML(u.def||'-')} | Fart: ${escapeHTML(u.spd||'-')}</div>
         <div class="actions">
           <button class="btn btn-danger small" data-remove>Fjern</button>
-          <button class="btn small" data-show-card="${u.id}">Vis kort</button>
         </div>
       </div>
       <div class="row ability-actions">
@@ -792,7 +623,7 @@ function renderArmyList(code){
           <button class="btn small" data-plus>+1</button>
         </div>
       </div>`;
-    row.querySelector('[data-show-card]')?.addEventListener('click', ()=> showCardModal(u));
+    row.addEventListener('dblclick', ()=> showCardModal(u));
     row.querySelector('[data-minus]').addEventListener('click', ()=>{ decFromBoard(code, id, 1); renderArmyList(code); });
     row.querySelector('[data-plus]').addEventListener('click',  ()=>{ addToBoard(code, id, 1);  renderArmyList(code); });
     row.querySelector('[data-remove]').addEventListener('click',()=>{ removeStack(code, id);      renderArmyList(code); });
@@ -928,69 +759,11 @@ function renderBoard(code){
     const res=document.createElement('div'); res.className='resizer'; pile.appendChild(res);
 
     pile.addEventListener('dblclick', ()=> showCardModal(node.unit));
-    pile.addEventListener('mousedown', (e)=>startDrag(e, cw, ch));
-    res.addEventListener('mousedown', startResize);
     boardEl.appendChild(pile);
   }
   computeAllSums(); autosave();
 }
 
-/* drag + klamp */
-let drag=null;
-function startDrag(e, cw, ch){
-  const pile = e.currentTarget;
-  const code = pile.dataset.code; const id = pile.dataset.id;
-  const node = boards.get(code).get(id); if(!node) return;
-  if(e.target.classList.contains('resizer') || e.target.closest('.ctrls')) return;
-  node.z = ++zTop; pile.style.zIndex = node.z;
-  drag = { code, id, startX:e.clientX, startY:e.clientY, x:node.x, y:node.y, cw, ch, scale:node.scale||1 };
-  document.addEventListener('mousemove', onDrag);
-  document.addEventListener('mouseup', endDrag);
-}
-function onDrag(e){
-  if(!drag) return;
-  const node = boards.get(drag.code).get(drag.id); if(!node) return;
-  const rawX = drag.x + (e.clientX - drag.startX);
-  const rawY = drag.y + (e.clientY - drag.startY);
-  const w = 240*drag.scale, h = 340*drag.scale;
-  node.x = clamp(rawX, 0, Math.max(0, drag.cw - w));
-  node.y = clamp(rawY, 0, Math.max(0, drag.ch - h));
-  renderBoard(drag.code);
-}
-function endDrag(){
-  if(drag){ snapNodeToGrid(drag.code, drag.id); renderBoard(drag.code); }
-  drag = null;
-  document.removeEventListener('mousemove', onDrag);
-  document.removeEventListener('mouseup', endDrag);
-  autosave();
-}
-
-/* resize */
-let rez=null;
-function startResize(e){
-  e.stopPropagation();
-  const pile = e.currentTarget.parentElement;
-  const code = pile.dataset.code; const id = pile.dataset.id;
-  const node = boards.get(code).get(id);
-  rez = { code, id, startX:e.clientX, startY:e.clientY, scale:node.scale||1 };
-  document.addEventListener('mousemove', onResize);
-  document.addEventListener('mouseup', endResize);
-}
-function onResize(e){
-  if(!rez) return;
-  const node = boards.get(rez.code).get(rez.id); if(!node) return;
-  const dx = (e.clientX - rez.startX), dy = (e.clientY - rez.startY);
-  const delta = Math.max(dx, dy);
-  node.scale = clamp(rez.scale * (1 + (delta / 300)), 0.5, 2.2);
-  renderBoard(rez.code);
-}
-function endResize(){
-  if(rez){ snapNodeToGrid(rez.code, rez.id); renderBoard(rez.code); }
-  rez = null;
-  document.removeEventListener('mousemove', onResize);
-  document.removeEventListener('mouseup', endResize);
-  autosave();
-}
 
 /* ------- Utils ------- */
 function openModal(){ byId('cardModal').classList.add('open'); }
@@ -1009,63 +782,6 @@ function abilityTags(text){
 }
 
 
-/* ===== Snap-to-grid (3 columns) ===== */
-const GRID_COLS = 3;
-const GRID_GAP = 14; // align with --gap
-function getGridMetrics(canvas, scale=1){
-  const cw = canvas.clientWidth;
-  const colW = Math.floor((cw - GRID_GAP*(GRID_COLS-1)) / GRID_COLS);
-  const cardW = 240 * scale;
-  const cardH = 340 * scale;
-  const rowH = cardH + GRID_GAP;
-  return { colW, rowH, cardW, cardH };
-}
-function indexFromXY(x, y, colW, rowH){
-  const col = Math.max(0, Math.round(x / (colW + GRID_GAP)));
-  const row = Math.max(0, Math.round(y / rowH));
-  return { col: Math.min(GRID_COLS-1, col), row };
-}
-function xyFromIndex(col, row, colW, rowH){
-  return { x: col * (colW + GRID_GAP), y: row * rowH };
-}
-function buildOccupancy(board, skipId, canvas){
-  const occ = new Set();
-  for(const [oid, node] of board){
-    if(oid === skipId) continue;
-    const { colW, rowH } = getGridMetrics(canvas, node.scale||1);
-    const { col, row } = indexFromXY((node.x||0), (node.y||0), colW, rowH);
-    occ.add(`${col}:${row}`);
-  }
-  return occ;
-}
-function findNearestFree(occ, targetCol, targetRow){
-  let radius = 0;
-  while(true){
-    for(let dr=-radius; dr<=radius; dr++){
-      for(let dc=-radius; dc<=radius; dc++){
-        if(Math.max(Math.abs(dr), Math.abs(dc)) !== radius) continue;
-        const nc = Math.min(Math.max(targetCol+dc, 0), GRID_COLS-1);
-        const nr = Math.max(targetRow+dr, 0);
-        const key = `${nc}:${nr}`;
-        if(!occ.has(key)) return {col:nc, row:nr};
-      }
-    }
-    radius++;
-    if(radius>2000) return {col:targetCol, row:targetRow};
-  }
-}
-function snapNodeToGrid(code, id){
-  const canvas = byId('board'+code);
-  const board = boards.get(code);
-  const node = board.get(id); if(!node) return;
-  const { colW, rowH } = getGridMetrics(canvas, node.scale||1);
-  const { col, row } = indexFromXY(node.x||0, node.y||0, colW, rowH);
-  const occ = buildOccupancy(board, id, canvas);
-  const { col:fc, row:fr } = findNearestFree(occ, col, row);
-  const pos = xyFromIndex(fc, fr, colW, rowH);
-  node.x = clamp(pos.x, 0, Math.max(0, canvas.clientWidth - 240*(node.scale||1)));
-  node.y = clamp(pos.y, 0, Math.max(0, canvas.clientHeight - 340*(node.scale||1)));
-}
 
 /* ------- Autosave ------- */
 const SAVE_KEY = 'aam_builder_view_addfav_v1';
@@ -1118,13 +834,6 @@ function restoreAutosave(){
 function byId(id){ return document.getElementById(id); }
 </script>
 
-
-<!-- Offline dataset placeholder (optional). 
-Paste JSON array of units inside this tag to ship file with built-in data. -->
-<script id="EMBED_UNITS" type="application/json"></script>
-</body>
-
-</html>
 <style>
 /* Force right-edge alignment for action areas */
 .stats-actions{display:grid;grid-template-columns:1fr auto;align-items:center;width:100%}
