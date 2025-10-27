@@ -1,0 +1,1134 @@
+<!doctype html>
+<html lang="no">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Axis & Allies Army Builder — Kort/Liste, «Legg til i hær», Favoritter</title>
+<style>
+:root{
+  --bg:#0f3a21; --bg-2:#124528; --card:#1f5a33; --card-2:#266a3e;
+  --text:#f3f6f4; --muted:#d7e3db; --accent:#2fb56c; --danger:#e37c7c;
+  --border:rgba(255,255,255,.12); --radius:14px; --shadow:0 6px 18px rgba(0,0,0,.25);
+  --gap:14px; --card-w:240px; --card-h:340px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--text);
+  background:linear-gradient(180deg,var(--bg),var(--bg-2) 60%);overflow-x:hidden}
+.topbar{display:grid;grid-template-columns:1fr auto;align-items:center;gap:12px;padding:12px 16px;
+  position:sticky;top:0;z-index:50;background:#0d311b;border-bottom:1px solid var(--border)}
+.brand{font-weight:700;font-size:18px}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:flex-end}
+.control{background:#103b22;color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px 12px;min-width:220px;outline:none}
+.file-btn{display:inline-flex;align-items:center;gap:8px;background:#114426;border:1px solid var(--border);padding:10px 12px;border-radius:10px;cursor:pointer}
+.file-btn input{display:none}
+.btn{background:#143e23;color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px 12px;cursor:pointer}
+.btn-primary{background:var(--accent);color:#072212;border-color:transparent}
+.btn-danger{background:var(--danger);color:#2d0d0d;border-color:transparent}
+.btn-ghost{background:transparent;border-color:var(--border)}
+.status.ok{color:var(--muted);opacity:.9}
+
+.page{display:grid;grid-template-columns:1fr 1fr;grid-template-areas:"available armyA" "armyB armyC";gap:var(--gap);padding:var(--gap);max-width:1400px;margin:0 auto;overflow-x:hidden}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);display:flex;flex-direction:column;min-height:320px;overflow:hidden}
+#available-panel{grid-area:available}
+#army-A{grid-area:armyA} #army-B{grid-area:armyB} #army-C{grid-area:armyC}
+.panel-head{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.panel-head h2{margin:0;font-size:18px;font-weight:700}
+.panel .actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.sum{margin-left:6px;opacity:.9}
+.view-switch{display:flex;gap:6px;margin-right:auto;margin-left:10px}
+.icon-btn{display:inline-flex;align-items:center;justify-content:center;width:36px;height:32px;background:#114426;border:1px solid var(--border);border-radius:8px;cursor:pointer}
+.icon-btn.active{outline:2px solid rgba(255,255,255,.35)}
+
+.filters{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;gap:14px;flex-wrap:wrap;align-items:center;background:var(--card-2)}
+.filter{display:flex;gap:8px;align-items:center}
+.filter.range input{width:90px;background:#153f25;color:var(--text);border:1px solid var(--border);border-radius:10px;padding:8px 10px}
+
+.units-list{padding:12px 14px;overflow-y:auto;overflow-x:hidden;height:560px;min-height:560px;max-height:560px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.35) transparent;}
+.units-list::-webkit-scrollbar{width:8px}
+.units-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.35);border-radius:4px}
+
+.unit-card{background:#194f2f;border:1px solid var(--border);border-radius:12px;padding:10px;margin-bottom:10px;position:relative}
+.unit-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:6px}
+.badge{font-size:12px;opacity:.85}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.pill{border:1px solid var(--border);border-radius:999px;padding:2px 8px;font-size:12px;opacity:.9}
+.linklike{cursor:pointer;text-decoration:underline}
+.muted{color:var(--muted);opacity:.85}
+.ability-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.tag{background:#0f3a21;border:1px solid var(--border);border-radius:999px;padding:3px 8px;font-size:12px;opacity:.95}
+.add-menu-wrapper{position:relative;display:inline-block}
+.add-menu{position:absolute;right:0;margin-top:6px;min-width:160px;background:#0e3620;border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 20px rgba(0,0,0,.35);z-index:60;display:none;overflow:hidden}
+.add-menu.open{display:block}
+.add-menu button{display:block;width:100%;text-align:left;padding:8px 10px;border:none;background:transparent;color:var(--text);cursor:pointer}
+.add-menu button:hover{background:#124528}
+
+/* Favoritt-stjerne */
+.fav{position:absolute;right:10px;bottom:10px;opacity:.6;cursor:pointer}
+.fav svg{width:20px;height:20px;display:block;filter:drop-shadow(0 2px 2px rgba(0,0,0,.25))}
+.fav[data-active="true"]{opacity:1}
+.fav path{fill:transparent;stroke:#e6e6e6;stroke-width:2}
+.fav[data-active="true"] path{fill:#ffd447;stroke:#8a6b00}
+
+/* Army bodies */
+.army-body{padding:8px 10px;overflow-y:auto;overflow-x:hidden;height:560px;min-height:560px;max-height:560px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.35) transparent;}
+.army-body::-webkit-scrollbar{width:8px;height:8px}
+.army-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,.35);border-radius:4px}
+.canvas{position:relative;width:100%;min-width:0;height:900px;border-radius:14px;
+  background: radial-gradient(ellipse at 10% 20%, rgba(255,255,255,.12), rgba(255,255,255,0) 60%),
+             linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
+  overflow:hidden;}
+.army-list{display:none;padding:12px 2px 2px 2px}
+.army-list .unit-card{margin:8px}
+
+/* Kort i lerret */
+.pile{position:absolute;width:var(--card-w);height:var(--card-h);border-radius:10px;user-select:none;transform-origin:top left;}
+.pile img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:12px;box-shadow:0 10px 20px rgba(0,0,0,.35);background:#1f2a1f}
+.stack-badge{position:absolute; top:-12px; right:8px; min-width:32px; height:30px; padding:0 8px;
+  background:linear-gradient(180deg,#ffd447,#ffb700); color:#222; font-weight:800; border-radius:999px;
+  display:flex; align-items:center; justify-content:center; box-shadow:0 6px 14px rgba(0,0,0,.35);
+  border:1px solid #8a6b00; z-index:6; opacity:.85}
+.pile .label{position:absolute; left:8px; bottom:8px; background:rgba(0,0,0,.6); color:#f5f7fb; padding:4px 8px;border-radius:8px; font-size:12px; font-weight:600; backdrop-filter: blur(2px); z-index:3}
+.pile .ctrls{position:absolute; top:-12px; left:6px; display:flex; gap:6px; z-index:6;
+  background:#ffffff; border:1px solid #d0d0d0; padding:4px 6px; border-radius:10px; box-shadow:0 6px 12px rgba(0,0,0,.25); opacity:.5;}
+.pile .ctrls button{padding:4px 8px;border-radius:8px;border:1px solid #c8c8c8;background:#fff;cursor:pointer;font-weight:700;font-size:16px;line-height:1;color:#222;}
+.resizer{position:absolute; right:-8px; bottom:-8px; width:18px; height:18px; border-radius:4px;background:rgba(255,255,255,.85); border:1px solid #c8c8c8; box-shadow:0 2px 6px rgba(0,0,0,.25); cursor:nwse-resize; z-index:7;}
+.resizer::after{content:""; position:absolute; inset:4px; border-right:2px solid #9aa6a0; border-bottom:2px solid #9aa6a0;}
+
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;padding:20px;z-index:100}
+.modal.open{display:flex}
+.modal-card{max-width:900px;width:100%;background:#1d4f32;border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+.modal-head{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border)}
+.modal-body{padding:16px;max-height:70vh;overflow:auto;display:grid;grid-template-columns:1fr 1fr;gap:14px;background:#134126}
+.modal-close{cursor:pointer;border:none;background:transparent;color:var(--text);font-size:20px}
+.modal-body img{width:100%;height:auto;border-radius:10px;border:1px solid var(--border);background:#0f2618}
+.info .stat{margin-bottom:8px;border:1px solid var(--border);border-radius:10px;background:#154b2b;padding:8px}
+.qa{display:flex;flex-direction:column;gap:10px}
+.qaItem{padding:8px 10px;background:#0f3a21;border:1px solid var(--border);border-radius:8px}
+.qaItem.heading{background:#114226;font-weight:700}
+
+@media (max-width:980px){
+  .page{grid-template-columns:1fr;grid-template-areas:"available" "armyA" "armyB" "armyC"}
+  .modal-body{grid-template-columns:1fr}
+}
+
+/* === UI streamline overrides (2025-09-22) === */
+
+/* Larger icons in view switch buttons */
+.icon-btn{
+  width:44px;
+  height:40px;
+  font-size:24px;
+  line-height:1;
+}
+
+/* Compact button variant */
+.btn.small{ padding:4.5px 6px; font-size:9px; border-radius:6px; }
+
+/* Narrower unit cards for list view */
+.unit-card{ padding:8px; margin-bottom:8px; }
+
+/* Move star inline in 'available' list */
+.fav-inline{ position:static; margin-right:6px; cursor:pointer; opacity:.95; }
+.fav-inline svg{ width:18px; height:18px; display:block; filter:drop-shadow(0 2px 2px rgba(0,0,0,.25)); }
+.fav-inline path{ fill:transparent; stroke:#e6e6e6; stroke-width:2; }
+.fav-inline[data-active="true"] path{ fill:#ffd447; stroke:#8a6b00; }
+/* Hide the old corner star if present */
+.unit-card .fav{ display:none; }
+
+/* Scrollable lists and canvases ("infinite" feel) */
+.units-list{ height:70vh; min-height:420px; max-height:none; }
+.army-body{ height:70vh; min-height:420px; max-height:none; }
+.canvas{ height:2000px; }
+
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">Axis & Allies Army Builder</div>
+  <div class="toolbar">
+    <input id="searchInput" class="control" placeholder="Søk navn / egenskaper…" />
+    <button id="tryOnlineBtn" class="btn btn-primary">Prøv auto-lasting</button>
+    <button id="pasteHtmlBtn" class="btn" title="Lim inn HTML-kilde fra AAM Cardbase">Lim inn HTML</button><button id="saveOfflineBtn" class="btn" title="Lagre som offline-data (i nettleseren)">Oppdater offline-data</button>
+    <label class="file-btn" title="Velg lagret HTML/JSON fra AAM Cardbase">
+      <input id="fileInput" type="file" accept=".json,.txt,.html,.htm" />Velg fil
+    </label>
+    <span id="autoLoadStatus" class="status ok"></span>
+  </div>
+</header>
+
+<main class="page">
+  <!-- Tilgjengelige enheter -->
+  <section class="panel" id="available-panel">
+    <div class="panel-head"><h2>Tilgjengelige enheter</h2></div>
+    <div class="filters">
+      <div class="filter">
+        <label for="typeFilter">Type</label>
+        <select id="typeFilter"><option value="all">Alle</option></select>
+      </div>
+      <div class="filter">
+        <label for="nationSelect">Nasjon</label>
+        <select id="nationSelect"><option value="all">Alle</option></select>
+      </div>
+      <div class="filter range">
+        <label for="yearFrom">År fra</label>
+        <input id="yearFrom" type="number" min="1900" max="1950" value="1939">
+        <span class="dash">til</span>
+        <input id="yearTo" type="number" min="1900" max="1950" value="1945">
+        <button id="resetFilters" class="btn btn-ghost">Nullstill</button>
+      </div>
+    </div>
+    <div id="available-units" class="units-list"></div>
+  </section>
+
+  <!-- Hær A -->
+  <section class="panel" id="army-A" data-army="A">
+    <div class="panel-head">
+      <h2>Hær A</h2>
+      <div class="view-switch">
+        <button class="icon-btn grid" data-view="grid" title="Kortvisning">▦</button>
+        <button class="icon-btn list" data-view="list" title="Listevisning">≡</button>
+      </div>
+      <div class="actions">
+        <button class="btn btn-ghost" data-exp="A">Eksporter</button>
+        <button class="btn btn-ghost" data-imp="A">Importer</button>
+        <button class="btn btn-danger" data-clear="A">Tøm</button>
+        <span class="sum">Sum: <strong id="sum-A">0</strong></span>
+      </div>
+    </div>
+    <div class="army-body">
+      <div class="canvas" id="boardA" title="Dra kort hit. Dobbeltklikk for stort kort. Dra i hjørnet for å skalere."></div>
+      <div class="army-list" id="listA"></div>
+    </div>
+  </section>
+
+  <!-- Hær B -->
+  <section class="panel" id="army-B" data-army="B">
+    <div class="panel-head">
+      <h2>Hær B</h2>
+      <div class="view-switch">
+        <button class="icon-btn grid" data-view="grid">▦</button>
+        <button class="icon-btn list" data-view="list">≡</button>
+      </div>
+      <div class="actions">
+        <button class="btn btn-ghost" data-exp="B">Eksporter</button>
+        <button class="btn btn-ghost" data-imp="B">Importer</button>
+        <button class="btn btn-danger" data-clear="B">Tøm</button>
+        <button class="btn btn-danger small" data-remove="B">Fjern hær</button>
+        <span class="sum">Sum: <strong id="sum-B">0</strong></span>
+      </div>
+    </div>
+    <div class="army-body">
+      <div class="canvas" id="boardB"></div>
+      <div class="army-list" id="listB"></div>
+    </div>
+  </section>
+
+  <!-- Hær C -->
+  <section class="panel" id="army-C" data-army="C">
+    <div class="panel-head">
+      <h2>Hær C</h2>
+      <div class="view-switch">
+        <button class="icon-btn grid" data-view="grid">▦</button>
+        <button class="icon-btn list" data-view="list">≡</button>
+      </div>
+      <div class="actions">
+        <button class="btn btn-ghost" data-exp="C">Eksporter</button>
+        <button class="btn btn-ghost" data-imp="C">Importer</button>
+        <button class="btn btn-danger" data-clear="C">Tøm</button>
+        <button class="btn btn-danger small" data-remove="C">Fjern hær</button>
+        <span class="sum">Sum: <strong id="sum-C">0</strong></span>
+      </div>
+    </div>
+    <div class="army-body">
+      <div class="canvas" id="boardC"></div>
+      <div class="army-list" id="listC"></div>
+    </div>
+  </section>
+
+  <div class="row" style="grid-column:1/-1;justify-content:center;padding-bottom:10px">
+    <button id="addArmyBtn" class="btn btn-primary">+ Legg til hær</button>
+  </div>
+</main>
+
+<!-- MAL FOR NY HÆR -->
+<template id="army-template">
+  <section class="panel" data-army="X">
+    <div class="panel-head">
+      <h2>Hær X</h2>
+      <div class="view-switch">
+        <button class="icon-btn grid" data-view="grid">▦</button>
+        <button class="icon-btn list" data-view="list">≡</button>
+      </div>
+      <div class="actions">
+        <button class="btn btn-ghost" data-exp="X">Eksporter</button>
+        <button class="btn btn-ghost" data-imp="X">Importer</button>
+        <button class="btn btn-danger" data-clear="X">Tøm</button>
+        <button class="btn btn-danger small" data-remove="X">Fjern hær</button>
+        <span class="sum">Sum: <strong id="sum-X">0</strong></span>
+      </div>
+    </div>
+    <div class="army-body">
+      <div class="canvas" id="boardX"></div>
+      <div class="army-list" id="listX"></div>
+    </div>
+  </section>
+</template>
+
+<!-- Modal -->
+<div class="modal" id="cardModal" aria-hidden="true">
+  <div class="modal-card">
+    <div class="modal-head">
+      <strong id="modalTitle">Kortdetaljer</strong>
+      <button class="modal-close" id="modalClose" aria-label="Lukk">×</button>
+    </div>
+    <div class="modal-body">
+      <img id="modalImg" alt="Unit card">
+      <div class="info">
+        <div class="stat"><strong>Nasjon:</strong> <span id="mNation"></span></div>
+        <div class="stat"><strong>Type:</strong> <span id="mType"></span></div>
+        <div class="stat"><strong>År:</strong> <span id="mYear"></span></div>
+        <div class="stat"><strong>Kostnad:</strong> <span id="mCost"></span></div>
+        <div class="stat"><strong>Def:</strong> <span id="mDef"></span></div>
+        <div class="stat"><strong>Fart:</strong> <span id="mSpd"></span></div>
+        <div class="stat"><strong>AI:</strong> <span id="mAI"></span></div>
+        <div class="stat"><strong>AV:</strong> <span id="mAV"></span></div>
+        <div class="stat"><strong>Egenskaper:</strong> <span id="mAb"></span></div>
+        <div class="qa" id="mFAQ"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ------- Konstanter/proxy ------- */
+const base = 'https://aamcardbase.com';
+const AAM_URL = base + '/army_builder.aspx';
+const PROXIES = [
+  (u)=>'https://cors.isomorphic-git.org/' + u,
+  (u)=>'https://corsproxy.io/?' + new URLSearchParams({ url:u }),
+  (u)=>'https://thingproxy.freeboard.io/fetch/' + u,
+  (u)=>'https://r.jina.ai/http://'+ u.replace(/^https?:\/\//,'')
+];
+const SPECIAL_KEY = 'Support, Fortifications & Obstacles';
+const KNOWN_NATIONS = [
+  'Australia','Belgium','Bulgaria','Canada','China','Croatia','Finland','France','Germany','Greece','Hungary','Italy','Japan',
+  'NZ New Zealand','Poland','Romania','SA South Africa','Slovakia','UK','USA','USSR','Yugoslavia'
+];
+
+let UNITS = [];
+const typeSet = new Set();
+const nationSet = new Set();
+const imgCache = new Map();
+const faqCache = new Map();
+const favs = new Set(JSON.parse(localStorage.getItem('aam_favs')||'[]'));
+
+const boards = new Map(); // Map<code, Map<unitId,node>>
+const totals = new Map();
+const viewState = JSON.parse(localStorage.getItem('aam_viewstate')||'{}'); // {A:'grid'|'list', ...}
+let zTop = 10;
+
+/* ------- Init ------- */
+document.addEventListener('DOMContentLoaded', () => {
+  ['A','B','C'].forEach(code => { boards.set(code, new Map()); totals.set(code, 0); });
+  hookArmy('A'); hookArmy('B'); hookArmy('C');
+  wireUI();
+  const embedded = getEmbeddedUnitsJSON();if(embedded && embedded.length){ loadUnits(embedded); setStatus('Bruker offline-data'); } else { autoFetchAll(); }
+  restoreAutosave();
+});
+
+/* ------- UI wiring ------- */
+function wireUI(){
+  byId('searchInput').addEventListener('input', renderAvailable);
+  byId('typeFilter').addEventListener('change', renderAvailable);
+  byId('nationSelect').addEventListener('change', renderAvailable);
+  byId('yearFrom').addEventListener('change', renderAvailable);
+  byId('yearTo').addEventListener('change', renderAvailable);
+  byId('resetFilters').addEventListener('click', () => {
+    byId('typeFilter').value='all';
+    byId('nationSelect').value='all';
+    byId('searchInput').value='';
+    byId('yearFrom').value=1939;
+    byId('yearTo').value=1945;
+    renderAvailable();
+  });
+  byId('tryOnlineBtn').addEventListener('click', autoFetchAll);
+  byId('saveOfflineBtn').addEventListener('click', offlineSnapshotFlow);
+  byId('pasteHtmlBtn').addEventListener('click', async ()=>{
+    const html = prompt('Lim inn HTML fra '+AAM_URL);
+    if(!html) return;
+    loadUnits(parseUnitsFromHTML(html));
+  });
+  byId('fileInput').addEventListener('change', async (ev)=>{
+    const f=ev.target.files?.[0]; if(!f) return;
+    const text=await f.text();
+    if(/\.(json)$/i.test(f.name)){ const arr=JSON.parse(text); loadUnits(arr); }
+    else { loadUnits(parseUnitsFromHTML(text)); }
+    ev.target.value='';
+  });
+  byId('addArmyBtn').addEventListener('click', addArmyPanel);
+  byId('modalClose').addEventListener('click', closeModal);
+  byId('cardModal').addEventListener('click', e=>{ if(e.target.id==='cardModal') closeModal(); });
+}
+
+
+/* ------- Offline dataset ------- */
+const OFFLINE_KEY = 'aam_embedded_units_v1';
+
+function getEmbeddedUnitsJSON(){
+  try{
+    const tag = document.getElementById('EMBED_UNITS');
+    if(tag && tag.textContent && tag.textContent.trim().startsWith('[')){
+      return JSON.parse(tag.textContent);
+    }
+  }catch{}
+  try{
+    const raw = localStorage.getItem(OFFLINE_KEY);
+    if(raw){ return JSON.parse(raw); }
+  }catch{}
+  return null;
+}
+
+function setEmbeddedUnitsJSON(arr){
+  try{ localStorage.setItem(OFFLINE_KEY, JSON.stringify(arr)); }catch{}
+}
+
+async function offlineSnapshotFlow(){
+  const choice = confirm('Vil du lime inn HTML-kilde fra AAM nå? (Velg Avbryt for å laste fra fil i neste dialog)');
+  if(choice){
+    const html = prompt('Lim inn HTML fra '+AAM_URL);
+    if(!html) return;
+    const arr = parseUnitsFromHTML(html);
+    if(!arr || !arr.length){ alert('Fant ingen enheter i HTMLen.'); return; }
+    setEmbeddedUnitsJSON(arr);
+    loadUnits(arr);
+    setStatus('Offline-data oppdatert.');
+  }else{
+    const input = document.createElement('input');
+    input.type='file'; input.accept='.html,.htm,.txt,.json';
+    input.onchange = async (ev)=>{
+      const f = ev.target.files?.[0]; if(!f) return;
+      const text = await f.text();
+      let arr = [];
+      try{
+        if(/\.json$/i.test(f.name)) arr = JSON.parse(text);
+        else arr = parseUnitsFromHTML(text);
+      }catch(e){ alert('Kunne ikke lese filen: '+(e?.message||'ukjent')); return; }
+      if(!arr.length){ alert('Fant ingen enheter i filen.'); return; }
+      setEmbeddedUnitsJSON(arr);
+      loadUnits(arr);
+      setStatus('Offline-data oppdatert.');
+    };
+    input.click();
+  }
+}
+
+/* ------- Last fra nett ------- */
+async function autoFetchAll(){
+  setStatus('Laster fra nett …');
+  for(const make of PROXIES){
+    try{
+      const raw = await (await fetch(make(AAM_URL))).text();
+      loadUnits(parseUnitsFromHTML(raw));
+      setStatus('Auto-lasting OK.');
+      return;
+    }catch(e){ console.warn('Proxy feilet:', e); }
+  }
+  setStatus('Auto-lasting feilet. Bruk "Lim inn HTML" eller "Velg fil".');
+  byId('available-units').innerHTML = '<div class="muted">Auto-lasting ble blokkert. Bruk "Lim inn HTML" eller "Velg fil".</div>';
+}
+function setStatus(msg){ byId('autoLoadStatus').textContent = msg || ''; }
+
+/* ------- Parser (én last) ------- */
+function parseUnitsFromHTML(html){
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+
+  // nasjoner fra checkbox-seksjonen
+  const cbLabels = [...doc.querySelectorAll('label, span, td, div')].map(el=>(el.textContent||'').trim());
+  for(const n of KNOWN_NATIONS){
+    if(cbLabels.some(t => new RegExp('\\b'+n.replace(/\s+/g,'\\s+')+'\\b','i').test(t))) nationSet.add(n);
+  }
+  nationSet.add(SPECIAL_KEY);
+
+  // finn tabell
+  let target = null;
+  for(const t of [...doc.querySelectorAll('table')]){
+    if(t.querySelector('a[href*="unit_AAM.aspx"]')) { target = t; break; }
+  }
+  if(!target) return [];
+
+  // header mapping
+  const header = [...target.querySelectorAll('thead th, thead td')].map(th => (th.textContent||'').trim().toLowerCase());
+  const idx = {
+    type: header.findIndex(h=>/category|type/i.test(h)),
+    year: header.findIndex(h=>/year/i.test(h)),
+    cost: header.findIndex(h=>/cost|points|pts/i.test(h)),
+    defspd: header.findIndex(h=>/def|speed|def\/spd/i.test(h)),
+    aiav: header.findIndex(h=>/ai|av|ai\/av/i.test(h)),
+    abilities: header.findIndex(h=>/abilit|special/i.test(h))
+  };
+
+  const units = [];
+  let currentNation = '';
+  for(const tr of target.querySelectorAll('tbody tr, tr')){
+    const link = tr.querySelector('a[href*="unit_AAM.aspx"]');
+    const tds = [...tr.children];
+
+    // nasjonsbanner?
+    if(tds.length===1 && (!link || !tds[0].querySelector('a'))){
+      const text = (tds[0].textContent||'').trim();
+      const hit = KNOWN_NATIONS.find(n => new RegExp('^'+n.replace(/\s+/g,'\\s+')+'\\b','i').test(text));
+      if(hit){ currentNation = hit; nationSet.add(hit); continue; }
+    }
+
+    if(!link) continue;
+
+    const href = link.getAttribute('href') || '';
+    const name = decodeHTML(link.textContent.trim());
+    if(!/unit_AAM\.aspx\?/i.test(href) || !name) continue;
+
+    const get=(i)=> (i>=0 && tds[i])?tds[i]:null;
+    const txt=(el)=> (el ? decodeHTML(el.textContent.trim()) : '');
+    const clean=(s)=> decodeHTML((s||'').replace(/\s+/g,' ').trim());
+
+    const typeRaw= clean(get(idx.type)?.innerHTML||'');   const type = typeRaw.replace(/<br\s*\/?>/gi,' / ').replace(/\s+/g,' ').trim();
+    const year   = clean(txt(get(idx.year)));
+    const costS  = clean(txt(get(idx.cost)));             const cost = parseFloat(costS.replace(',', '.')) || 0;
+    const defSpdRaw = clean(get(idx.defspd)?.innerHTML||''); const defSpd = defSpdRaw.replace(/<br\s*\/?>/gi,'|');
+    const aiavRaw = clean(get(idx.aiav)?.innerHTML||'');  const aiav = aiavRaw.replace(/<br\s*\/?>/gi,'|');
+    const abRaw = clean(get(idx.abilities)?.innerHTML||''); let abilities = abRaw.replace(/<[^>]+>/g,'').trim();
+
+    const def = (defSpd.split('|')[0]||'').replace(/Def/i,'').trim();
+    const spd = (defSpd.split('|')[1]||'').replace(/Speed/i,'').trim();
+    const ai  = (aiav.split('|')[0]||'').replace(/AI/i,'').trim();
+    const av  = (aiav.split('|')[1]||'').replace(/AV/i,'').trim();
+
+    const absolute = href.startsWith('http') ? href : (base + '/' + href.replace(/^\//,''));
+    const isSpecial = /Obstacle|Fortification|Support/i.test(type);
+    const id = new URL(absolute).searchParams.get('id') || absolute;
+    const nation = isSpecial ? SPECIAL_KEY : (currentNation || '');
+    if(nation) nationSet.add(nation);
+    abilities = decodeHTML(abilities);
+
+    const unit = { id, nation, year, name, href:absolute, type, cost, def, spd, ai, av, abilities };
+    units.push(unit);
+  }
+  return units;
+}
+
+/* ------- Etter parsing ------- */
+function loadUnits(units){
+  if(!units || !units.length){ alert('Fant ingen enheter.'); return; }
+  UNITS = units.slice();
+
+  typeSet.clear(); UNITS.forEach(u=>{ if(u.type) typeSet.add(u.type.split('/')[0].trim()); });
+
+  hydrateFilters();
+  renderAvailable();
+  for(const c of boards.keys()) renderBoard(c); // for listevisning-synk
+  autosave();
+}
+
+/* ------- Filtre & liste over enheter ------- */
+function hydrateFilters(){
+  const typeSel = byId('typeFilter');
+  typeSel.innerHTML = '<option value="all">Alle</option>' + [...typeSet].sort().map(t=>`<option>${t}</option>`).join('');
+
+  const nations = [...nationSet].sort((a,b)=>{
+    if(a===SPECIAL_KEY) return -1; if(b===SPECIAL_KEY) return 1; return a.localeCompare(b);
+  });
+  const ns = byId('nationSelect');
+  ns.innerHTML = '<option value="all">Alle</option>' + nations.map(n=>`<option>${n}</option>`).join('');
+  if(nations.includes('Germany')) ns.value='Germany';
+}
+
+function renderAvailable(){
+  const listEl = byId('available-units');
+  listEl.innerHTML = '';
+  const q = byId('searchInput').value.trim().toLowerCase();
+  const nation = byId('nationSelect').value;
+  const type = byId('typeFilter').value;
+  const yf = parseInt(byId('yearFrom').value, 10);
+  const yt = parseInt(byId('yearTo').value, 10);
+
+  const filtered = UNITS.filter(u=>{
+    if(nation!=='all' && u.nation!==nation) return false;
+    if(type!=='all' && !(u.type||'').toLowerCase().startsWith(type.toLowerCase())) return false;
+    const y = parseInt(u.year||'0',10);
+    if(y && (y < yf || y > yt)) return false;
+    if(q && !(u.name?.toLowerCase().includes(q) || u.abilities?.toLowerCase().includes(q))) return false;
+    return true;
+  });
+
+  if(!filtered.length){
+    listEl.innerHTML = `<div class="muted">Ingen enheter for filteret.</div>`;
+    return;
+  }
+
+  for(const u of filtered){
+    listEl.appendChild(makeUnitRow(u));
+  }
+}
+
+
+function makeUnitRow(u){
+  const card = document.createElement('div');
+  card.className = 'unit-card';
+  card.draggable = true;
+  card.addEventListener('dragstart', e=>{
+    e.dataTransfer.setData('text/plain', JSON.stringify({id:u.id}));
+    e.dataTransfer.effectAllowed = 'copy';
+  });
+  const tags = abilityTags(u.abilities);
+  const favActive = favs.has(u.id);
+
+  card.innerHTML = `
+      <div class="unit-head">
+        <div class="row">
+          <span class="fav-inline" data-fav="${u.id}" ${favActive?'data-active="true"':''} title="Merk som favoritt">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 17.27l-5.18 3.04 1.58-5.81L3 9.24l5.91-.51L12 3.5l3.09 5.23 5.91.51-5.4 5.26 1.58 5.81z"/></svg>
+          </span>
+          <strong>${escapeHTML(u.name)}</strong>
+          <span class="badge pill">${escapeHTML(u.type||'Unit')}</span>
+          <span class="badge pill">${escapeHTML(u.nation||'—')}</span>
+          <span class="badge pill">${escapeHTML(u.year||'')}</span>
+        </div>
+        <div class="row">
+          <span class="badge">Kostnad: <strong>${fmt(u.cost||0)}</strong></span>
+        </div>
+      </div>
+
+      <div class="row stats-actions" style="margin-bottom:6px">
+        <div>AI: ${escapeHTML(u.ai||'-')} | AV: ${escapeHTML(u.av||'-')} | Def: ${escapeHTML(u.def||'-')} | Fart: ${escapeHTML(u.spd||'-')}</div>
+        <div class="actions">
+          <button class="btn small" data-show-card="${u.id}">Vis kort</button>
+        </div>
+      </div>
+      <div class="row ability-actions">
+        <div class="ability-tags">${tags.map(t=>`<span class="tag">${escapeHTML(t)}</span>`).join('')}</div>
+        <div class="actions">
+          <div class="add-menu-wrapper">
+            <button class="btn small" data-add-menu>Legg til i hær ▾</button>
+            <div class="add-menu" data-menu></div>
+          </div>
+        </div>
+      </div>
+  `;
+
+  // 'Vis kort' åpner kort-modal
+  card.querySelector('[data-show-card]')?.addEventListener('click', ()=> showCardModal(u));
+
+  // Favoritt stjerne
+  card.querySelector('[data-fav]')?.addEventListener('click', (e)=>{
+    const id = e.currentTarget.getAttribute('data-fav');
+    if(favs.has(id)) favs.delete(id); else favs.add(id);
+    if(favs.has(id)) e.currentTarget.setAttribute('data-active','true'); else e.currentTarget.removeAttribute('data-active');
+    localStorage.setItem('aam_favs', JSON.stringify([...favs]));
+  });
+
+  // Legg-til i hær meny
+  const btn = card.querySelector('[data-add-menu]');
+  const menu = card.querySelector('[data-menu]');
+  btn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    buildAddMenu(menu, u.id);
+    document.querySelectorAll('.add-menu.open').forEach(m=>{ if(m!==menu) m.classList.remove('open'); });
+    menu.classList.toggle('open');
+  });
+  document.addEventListener('click', ()=> menu.classList.remove('open'));
+
+  return card;
+}
+
+
+function buildAddMenu(menuEl, unitId){
+  menuEl.innerHTML = '';
+  for(const code of [...boards.keys()]){
+    const b = document.createElement('button');
+    b.textContent = 'Hær ' + code;
+    b.addEventListener('click', ()=>{ addToBoard(code, unitId, 1); menuEl.classList.remove('open'); });
+    menuEl.appendChild(b);
+  }
+}
+
+/* ------- Kort (bilde + FAQ) ------- */
+async function showCardModal(u){
+  byId('modalTitle').textContent = u.name || 'Kort';
+  byId('mNation').textContent = u.nation||''; byId('mType').textContent = u.type||'';
+  byId('mYear').textContent = u.year||''; byId('mCost').textContent = fmt(u.cost||0);
+  byId('mDef').textContent = u.def||''; byId('mSpd').textContent = u.spd||'';
+  byId('mAI').textContent = u.ai||''; byId('mAV').textContent = u.av||'';
+  byId('mAb').textContent = u.abilities||'-';
+  const [img, faq] = await Promise.all([getCardImg(u), getUnitFAQ(u)]);
+  byId('modalImg').src = img || ''; byId('mFAQ').innerHTML = faqToHTML(faq);
+  openModal();
+}
+async function fetchThroughProxies(url){
+  for(const make of PROXIES){ try{ return await (await fetch(make(url))).text(); }catch{} }
+  return null;
+}
+async function getCardImg(u){
+  if(imgCache.has(u.id)) return imgCache.get(u.id);
+  const page = (getEmbeddedUnitsJSON()? null : await fetchThroughProxies(u.href).catch(()=>null));
+  if(!page){ imgCache.set(u.id,''); return ''; }
+  const m = page.match(/\/Content\/CardsAAM\/[^"']+\.jpg/i);
+  const full = m ? (base + m[0]) : '';
+  imgCache.set(u.id, full); return full;
+}
+async function getUnitFAQ(u){
+  if(faqCache.has(u.id)) return faqCache.get(u.id);
+  const page = (getEmbeddedUnitsJSON()? null : await fetchThroughProxies(u.href).catch(()=>null));
+  let faq = '';
+  if(page){
+    const doc = new DOMParser().parseFromString(page, 'text/html');
+    let header = [...doc.querySelectorAll('h1,h2,h3,strong,span,p')]
+      .find(el => /Special\s+Abilities\s+Errata\s*&\s*FAQ/i.test(el.textContent||''));
+    if(header){
+      let out=[], n=header.nextElementSibling;
+      while(n){
+        const t=(n.textContent||'').trim();
+        if(/back to search page/i.test(t)) break;
+        if(/^h[1-6]$/i.test(n.tagName)) break;
+        const text=(n.innerHTML||'').replace(/<br\s*\/?>/gi,'\n').replace(/<[^>]+>/g,'').trim();
+        if(text) out.push(text);
+        n=n.nextElementSibling;
+      }
+      faq = decodeHTML(out.join('\n').replace(/\n{3,}/g,'\n\n').trim());
+    }
+  }
+  faqCache.set(u.id, faq); return faq;
+}
+function faqToHTML(faqText){
+  if(!faqText) return '<div class="qaItem"><em>Ingen FAQ funnet.</em></div>';
+  const lines = faqText.split(/\n/).map(s=>s.trim()).filter(Boolean);
+  const blocks=[]; let curH=null, curQ=null, curA=[];
+  function pushQA(){ if(curQ!==null){ blocks.push({type:'qa', h:curH, q:curQ, a:curA.join(' ').trim()}); curQ=null; curA=[]; } }
+  function isH(s){ return s.length>0 && s.length<=64 && /^[A-Za-z][A-Za-z0-9 \-/'()&]*$/.test(s); }
+  for(const ln of lines){
+    if(/^Q[:\-\s]/i.test(ln)){ pushQA(); curQ=ln.replace(/^Q[:\-\s]*/i,'').trim(); }
+    else if(/^A[:\-\s]/i.test(ln)){ curA.push(ln.replace(/^A[:\-\s]*/i,'').trim()); }
+    else if(isH(ln)){ pushQA(); curH=ln; blocks.push({type:'h', t:ln}); }
+    else { if(curQ!==null && curA.length===0) curQ+=' '+ln; else if(curQ!==null) curA.push(ln); else blocks.push({type:'p', t:ln}); }
+  }
+  pushQA();
+  return blocks.map(b =>
+    b.type==='h' ? `<div class="qaItem heading">${escapeHTML(b.t)}</div>` :
+    b.type==='qa' ? `${b.h?`<div class="qaItem heading">${escapeHTML(b.h)}</div>`:''}
+      <div class="qaItem"><div><strong>Q:</strong> ${escapeHTML(b.q)}</div><div><strong>A:</strong> ${escapeHTML(b.a)}</div></div>` :
+    `<div class="qaItem">${escapeHTML(b.t||'')}</div>`
+  ).join('');
+}
+
+/* ------- Hærpaneler / visningsbytte / lerret ------- */
+function hookArmy(code){
+  const section = byId('army-'+code);
+  const canvas = byId('board'+code);
+  const list   = byId('list'+code);
+
+  // drag/drop
+  canvas.ondragover = e => e.preventDefault();
+  canvas.ondrop = e => { e.preventDefault(); try{ const data = JSON.parse(e.dataTransfer.getData('text/plain')); if(data?.id) addToBoard(code, data.id, 1); }catch{} };
+
+  // toppmeny (grid/list)
+  const gridBtn = section.querySelector('.view-switch [data-view="grid"]');
+  const listBtn = section.querySelector('.view-switch [data-view="list"]');
+  function applyView(v){
+    viewState[code]=v; localStorage.setItem('aam_viewstate', JSON.stringify(viewState));
+    gridBtn.classList.toggle('active', v==='grid'); listBtn.classList.toggle('active', v==='list');
+    canvas.style.display = (v==='grid'?'block':'none');
+    list.style.display   = (v==='list'?'block':'none');
+    if(v==='list') renderArmyList(code);
+  }
+  gridBtn.addEventListener('click', ()=>applyView('grid'));
+  listBtn.addEventListener('click', ()=>applyView('list'));
+  applyView(viewState[code]||'grid');
+
+  // knapper
+  section.querySelector('[data-exp="'+code+'"]').addEventListener('click', ()=>exportBoard(code));
+  section.querySelector('[data-imp="'+code+'"]').addEventListener('click', ()=>importBoardPrompt(code));
+  section.querySelector('[data-clear="'+code+'"]').addEventListener('click', ()=>{ if(confirm('Tøm Hær '+code+'?')){ boards.set(code,new Map()); totals.set(code,0); renderBoard(code); updateSum(code); renderArmyList(code); autosave(); }});
+  if(code!=='A'){
+    const remBtn = section.querySelector('[data-remove="'+code+'"]');
+    remBtn?.addEventListener('click', ()=>{ if(confirm('Fjern Hær '+code+'?')) removeArmy(code); });
+  }
+
+  renderBoard(code); updateSum(code);
+}
+
+function renderArmyList(code){
+  const listEl = byId('list'+code);
+  listEl.innerHTML = '';
+  const board = boards.get(code);
+  for(const [id,node] of board){
+    const u = node.unit;
+    const row = document.createElement('div');
+    row.className='unit-card';
+    const tags = abilityTags(u.abilities);
+    row.innerHTML = `
+      <div class="unit-head">
+        <div class="row">
+          <strong>${escapeHTML(u.name)}</strong>
+          <span class="badge pill">${escapeHTML(u.type||'Unit')}</span>
+          <span class="badge pill">${escapeHTML(u.nation||'—')}</span>
+          <span class="badge pill">${escapeHTML(u.year||'')}</span>
+        </div>
+        <div class="row">
+          <span class="badge">Kostnad: <strong>${fmt(u.cost||0)}</strong></span>
+          <span class="badge">Antall: <strong>${node.qty}</strong></span>
+        </div>
+      </div>
+      <div class="row stats-actions" style="margin-bottom:6px">
+        <div>AI: ${escapeHTML(u.ai||'-')} | AV: ${escapeHTML(u.av||'-')} | Def: ${escapeHTML(u.def||'-')} | Fart: ${escapeHTML(u.spd||'-')}</div>
+        <div class="actions">
+          <button class="btn btn-danger small" data-remove>Fjern</button>
+          <button class="btn small" data-show-card="${u.id}">Vis kort</button>
+        </div>
+      </div>
+      <div class="row ability-actions">
+        <div class="ability-tags">${tags.map(t=>`<span class="tag">${escapeHTML(t)}</span>`).join('')}</div>
+        <div class="actions">
+          <button class="btn small" data-minus>−1</button>
+          <button class="btn small" data-plus>+1</button>
+        </div>
+      </div>`;
+    row.querySelector('[data-show-card]')?.addEventListener('click', ()=> showCardModal(u));
+    row.querySelector('[data-minus]').addEventListener('click', ()=>{ decFromBoard(code, id, 1); renderArmyList(code); });
+    row.querySelector('[data-plus]').addEventListener('click',  ()=>{ addToBoard(code, id, 1);  renderArmyList(code); });
+    row.querySelector('[data-remove]').addEventListener('click',()=>{ removeStack(code, id);      renderArmyList(code); });
+    listEl.appendChild(row);
+  }
+}
+
+/* ------- Hjelpere for hærpaneler ------- */
+function getNextCode(){
+  const used = new Set([...boards.keys()]);
+  for(let c=66;c<=90;c++){ // B..Z
+    const code = String.fromCharCode(c);
+    if(!used.has(code)) return code;
+  }
+  return null;
+}
+function addArmyPanel(){
+  const code = getNextCode();
+  if(!code){ alert('Maks antall hærer nådd.'); return; }
+  boards.set(code, new Map()); totals.set(code, 0);
+
+  const tpl = byId('army-template').content.cloneNode(true);
+  const section = tpl.querySelector('section.panel');
+  section.id = 'army-'+code; section.dataset.army = code;
+  section.querySelector('h2').textContent = 'Hær ' + code;
+  section.querySelector('[data-exp="X"]').setAttribute('data-exp', code);
+  section.querySelector('[data-imp="X"]').setAttribute('data-imp', code);
+  section.querySelector('[data-clear="X"]').setAttribute('data-clear', code);
+  section.querySelector('[data-remove="X"]').setAttribute('data-remove', code);
+  section.querySelector('#sum-X').id = 'sum-'+code;
+  section.querySelector('#boardX').id = 'board'+code;
+  section.querySelector('#listX').id  = 'list'+code;
+
+  const allArmies = [...document.querySelectorAll('section.panel[id^="army-"]')];
+  const last = allArmies[allArmies.length-1];
+  last.after(section);
+
+  hookArmy(code);
+  autosave();
+}
+function removeArmy(code){
+  if(code==='A') return;
+  boards.delete(code);
+  totals.delete(code);
+  const sec = byId('army-'+code);
+  sec?.parentNode?.removeChild(sec);
+  autosave();
+}
+
+/* ------- Lerret (kort) ------- */
+function fmt(n){ const v = Math.round((n||0)*100)/100; return (''+v).replace('.', ','); }
+async function addToBoard(code, id, qty=1){
+  const unit = UNITS.find(x => x.id === id); if(!unit) return;
+  const board = boards.get(code);
+  const canvas = byId('board'+code);
+  const node = board.get(id) || { unit, qty:0, img:null, x:20 + (board.size%3)*270, y:20 + Math.floor(board.size/3)*360, scale:1, z: ++zTop };
+  node.qty += qty;
+  if(!node.img){ node.img = await getCardImg(unit); }
+  const maxX = Math.max(0, canvas.clientWidth  - 240*node.scale);
+  const maxY = Math.max(0, canvas.clientHeight - 340*node.scale);
+  node.x = clamp(node.x, 0, maxX); node.y = clamp(node.y, 0, maxY);
+  board.set(id, node);
+  renderBoard(code);
+  snapNodeToGrid(code, id);
+  renderBoard(code);
+  if((viewState[code]||'grid')==='list') renderArmyList(code);
+}
+function decFromBoard(code, id, qty=1){
+  const board = boards.get(code); const node = board.get(id); if(!node) return;
+  node.qty = Math.max(0, node.qty - qty); if(node.qty===0) board.delete(id);
+  renderBoard(code);
+  if((viewState[code]||'grid')==='list') renderArmyList(code);
+}
+function removeStack(code, id){ boards.get(code).delete(id); renderBoard(code); if((viewState[code]||'grid')==='list') renderArmyList(code); }
+
+function updateSum(code){
+  const sum = [...boards.get(code).values()].reduce((a,n)=>a+((n.unit.cost||0)*(n.qty||0)),0);
+  totals.set(code,sum);
+  byId('sum-'+code).textContent = fmt(sum);
+}
+function computeAllSums(){ for(const c of boards.keys()) updateSum(c); }
+
+function exportBoard(code){
+  const board = boards.get(code);
+  const payload = [...board.entries()].map(([id,node])=>({ id, qty:node.qty, x:node.x, y:node.y, scale:node.scale }));
+  const data = { code, army: payload, total: totals.get(code), ts: Date.now() };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = `aam_army_${code}.json`; a.click(); URL.revokeObjectURL(url);
+}
+function importBoardPrompt(code){
+  const txt = prompt('Lim inn eksportert JSON for Hær '+code+':'); if(!txt) return;
+  try{
+    const data = JSON.parse(txt);
+    if(!Array.isArray(data.army)) throw new Error('Ugyldig format');
+    const board = new Map();
+    for(const item of data.army){
+      const unit = UNITS.find(u=>u.id===item.id);
+      if(unit) board.set(item.id, { unit, qty:item.qty||1, img:null, x:item.x||20, y:item.y||20, scale:item.scale||1, z: ++zTop });
+    }
+    boards.set(code, board);
+    Promise.all([...board.values()].map(async n => n.img = await getCardImg(n.unit))).then(()=> { for(const [i,_n] of board){ snapNodeToGrid(code, i); } renderBoard(code); });
+    renderBoard(code); updateSum(code); autosave();
+    if((viewState[code]||'grid')==='list') renderArmyList(code);
+  }catch(e){ alert('Kunne ikke importere: ' + (e?.message || 'Ukjent feil')); }
+}
+
+function renderBoard(code){
+  const boardEl = byId('board'+code);
+  const board = boards.get(code);
+  boardEl.innerHTML = '';
+  const cw = boardEl.clientWidth, ch = boardEl.clientHeight;
+  for(const [id, node] of board){
+    const pile = document.createElement('div');
+    pile.className='pile'; pile.dataset.code = code; pile.dataset.id = id;
+    const w = 240*(node.scale||1), h = 340*(node.scale||1);
+    node.x = clamp(node.x, 0, Math.max(0, cw - w));
+    node.y = clamp(node.y, 0, Math.max(0, ch - h));
+    pile.style.left = (node.x||0)+'px'; pile.style.top = (node.y||0)+'px';
+    pile.style.transform = `scale(${node.scale||1})`; pile.style.zIndex = node.z || 1;
+
+    const ctrls = document.createElement('div'); ctrls.className='ctrls';
+    ctrls.innerHTML = `<button title="−1">−</button><button title="+1">+</button><button title="Fjern stabel">×</button>`;
+    const [btnMinus, btnPlus, btnRemove] = ctrls.querySelectorAll('button');
+    btnMinus.onclick = (e)=>{ e.stopPropagation(); decFromBoard(code, id, 1); };
+    btnPlus.onclick  = (e)=>{ e.stopPropagation(); addToBoard(code, id, 1); };
+    btnRemove.onclick= (e)=>{ e.stopPropagation(); removeStack(code, id); };
+    pile.appendChild(ctrls);
+
+    const img = document.createElement('img'); img.alt=node.unit.name; img.src=node.img||''; pile.appendChild(img);
+    if(node.qty >= 2){ const badge=document.createElement('div'); badge.className='stack-badge'; badge.textContent='×'+node.qty; pile.appendChild(badge); }
+    const label=document.createElement('div'); label.className='label'; label.textContent=node.unit.name; pile.appendChild(label);
+    const res=document.createElement('div'); res.className='resizer'; pile.appendChild(res);
+
+    pile.addEventListener('dblclick', ()=> showCardModal(node.unit));
+    pile.addEventListener('mousedown', (e)=>startDrag(e, cw, ch));
+    res.addEventListener('mousedown', startResize);
+    boardEl.appendChild(pile);
+  }
+  computeAllSums(); autosave();
+}
+
+/* drag + klamp */
+let drag=null;
+function startDrag(e, cw, ch){
+  const pile = e.currentTarget;
+  const code = pile.dataset.code; const id = pile.dataset.id;
+  const node = boards.get(code).get(id); if(!node) return;
+  if(e.target.classList.contains('resizer') || e.target.closest('.ctrls')) return;
+  node.z = ++zTop; pile.style.zIndex = node.z;
+  drag = { code, id, startX:e.clientX, startY:e.clientY, x:node.x, y:node.y, cw, ch, scale:node.scale||1 };
+  document.addEventListener('mousemove', onDrag);
+  document.addEventListener('mouseup', endDrag);
+}
+function onDrag(e){
+  if(!drag) return;
+  const node = boards.get(drag.code).get(drag.id); if(!node) return;
+  const rawX = drag.x + (e.clientX - drag.startX);
+  const rawY = drag.y + (e.clientY - drag.startY);
+  const w = 240*drag.scale, h = 340*drag.scale;
+  node.x = clamp(rawX, 0, Math.max(0, drag.cw - w));
+  node.y = clamp(rawY, 0, Math.max(0, drag.ch - h));
+  renderBoard(drag.code);
+}
+function endDrag(){
+  if(drag){ snapNodeToGrid(drag.code, drag.id); renderBoard(drag.code); }
+  drag = null;
+  document.removeEventListener('mousemove', onDrag);
+  document.removeEventListener('mouseup', endDrag);
+  autosave();
+}
+
+/* resize */
+let rez=null;
+function startResize(e){
+  e.stopPropagation();
+  const pile = e.currentTarget.parentElement;
+  const code = pile.dataset.code; const id = pile.dataset.id;
+  const node = boards.get(code).get(id);
+  rez = { code, id, startX:e.clientX, startY:e.clientY, scale:node.scale||1 };
+  document.addEventListener('mousemove', onResize);
+  document.addEventListener('mouseup', endResize);
+}
+function onResize(e){
+  if(!rez) return;
+  const node = boards.get(rez.code).get(rez.id); if(!node) return;
+  const dx = (e.clientX - rez.startX), dy = (e.clientY - rez.startY);
+  const delta = Math.max(dx, dy);
+  node.scale = clamp(rez.scale * (1 + (delta / 300)), 0.5, 2.2);
+  renderBoard(rez.code);
+}
+function endResize(){
+  if(rez){ snapNodeToGrid(rez.code, rez.id); renderBoard(rez.code); }
+  rez = null;
+  document.removeEventListener('mousemove', onResize);
+  document.removeEventListener('mouseup', endResize);
+  autosave();
+}
+
+/* ------- Utils ------- */
+function openModal(){ byId('cardModal').classList.add('open'); }
+function closeModal(){ byId('cardModal').classList.remove('open'); }
+function escapeHTML(s){ return (s||'').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[m])); }
+function decodeHTML(s){ const el=document.createElement('textarea'); el.innerHTML=s||''; return el.value; }
+function clamp(v,min,max){ return Math.min(max, Math.max(min, v)); }
+function abilityTags(text){
+  if(!text) return [];
+  let parts = text.split(/;|,|\/|•|·|\||\n/).map(s=>s.trim());
+  parts = parts.map(x=>x.replace(/\(.*?\)/g,'').trim()).filter(x=>x && x.length<=40 && /\w/.test(x));
+  parts = parts.map(x => x.replace(/^This unit (has|can|may|gets|is|does)\s+/i,'').trim());
+  const out=[]; const seen=new Set();
+  for(const p of parts){ const k=p.toLowerCase(); if(!seen.has(k)){ seen.add(k); out.push(p); } if(out.length>=8) break; }
+  return out;
+}
+
+
+/* ===== Snap-to-grid (3 columns) ===== */
+const GRID_COLS = 3;
+const GRID_GAP = 14; // align with --gap
+function getGridMetrics(canvas, scale=1){
+  const cw = canvas.clientWidth;
+  const colW = Math.floor((cw - GRID_GAP*(GRID_COLS-1)) / GRID_COLS);
+  const cardW = 240 * scale;
+  const cardH = 340 * scale;
+  const rowH = cardH + GRID_GAP;
+  return { colW, rowH, cardW, cardH };
+}
+function indexFromXY(x, y, colW, rowH){
+  const col = Math.max(0, Math.round(x / (colW + GRID_GAP)));
+  const row = Math.max(0, Math.round(y / rowH));
+  return { col: Math.min(GRID_COLS-1, col), row };
+}
+function xyFromIndex(col, row, colW, rowH){
+  return { x: col * (colW + GRID_GAP), y: row * rowH };
+}
+function buildOccupancy(board, skipId, canvas){
+  const occ = new Set();
+  for(const [oid, node] of board){
+    if(oid === skipId) continue;
+    const { colW, rowH } = getGridMetrics(canvas, node.scale||1);
+    const { col, row } = indexFromXY((node.x||0), (node.y||0), colW, rowH);
+    occ.add(`${col}:${row}`);
+  }
+  return occ;
+}
+function findNearestFree(occ, targetCol, targetRow){
+  let radius = 0;
+  while(true){
+    for(let dr=-radius; dr<=radius; dr++){
+      for(let dc=-radius; dc<=radius; dc++){
+        if(Math.max(Math.abs(dr), Math.abs(dc)) !== radius) continue;
+        const nc = Math.min(Math.max(targetCol+dc, 0), GRID_COLS-1);
+        const nr = Math.max(targetRow+dr, 0);
+        const key = `${nc}:${nr}`;
+        if(!occ.has(key)) return {col:nc, row:nr};
+      }
+    }
+    radius++;
+    if(radius>2000) return {col:targetCol, row:targetRow};
+  }
+}
+function snapNodeToGrid(code, id){
+  const canvas = byId('board'+code);
+  const board = boards.get(code);
+  const node = board.get(id); if(!node) return;
+  const { colW, rowH } = getGridMetrics(canvas, node.scale||1);
+  const { col, row } = indexFromXY(node.x||0, node.y||0, colW, rowH);
+  const occ = buildOccupancy(board, id, canvas);
+  const { col:fc, row:fr } = findNearestFree(occ, col, row);
+  const pos = xyFromIndex(fc, fr, colW, rowH);
+  node.x = clamp(pos.x, 0, Math.max(0, canvas.clientWidth - 240*(node.scale||1)));
+  node.y = clamp(pos.y, 0, Math.max(0, canvas.clientHeight - 340*(node.scale||1)));
+}
+
+/* ------- Autosave ------- */
+const SAVE_KEY = 'aam_builder_view_addfav_v1';
+function autosave(){
+  try{
+    const data = { boards:{}, sums:{} };
+    for(const [code, board] of boards.entries()){
+      data.boards[code] = [...board.entries()].map(([id,node])=>({ id, qty:node.qty, x:node.x, y:node.y, scale:node.scale }));
+      data.sums[code] = totals.get(code)||0;
+    }
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+  }catch{}
+}
+function restoreAutosave(){
+  try{
+    const raw = localStorage.getItem(SAVE_KEY); if(!raw) return;
+    const data = JSON.parse(raw);
+    for(const code of Object.keys(data.boards||{})){
+      if(!boards.has(code)){
+        const tpl = byId('army-template').content.cloneNode(true);
+        const section = tpl.querySelector('section.panel');
+        section.id = 'army-'+code; section.dataset.army = code;
+        section.querySelector('h2').textContent = 'Hær ' + code;
+        section.querySelector('[data-exp="X"]').setAttribute('data-exp', code);
+        section.querySelector('[data-imp="X"]').setAttribute('data-imp', code);
+        section.querySelector('[data-clear="X"]').setAttribute('data-clear', code);
+        section.querySelector('[data-remove="X"]').setAttribute('data-remove', code);
+        section.querySelector('#sum-X').id = 'sum-'+code;
+        section.querySelector('#boardX').id = 'board'+code;
+        section.querySelector('#listX').id  = 'list'+code;
+        const allArmies = [...document.querySelectorAll('section.panel[id^="army-"]')];
+        const last = allArmies[allArmies.length-1]; last.after(section);
+        boards.set(code, new Map()); totals.set(code, 0);
+        hookArmy(code);
+      }
+      const board = new Map();
+      for(const item of (data.boards[code]||[])){
+        const unit = UNITS.find(u=>u.id===item.id);
+        if(unit) board.set(item.id, { unit, qty:item.qty||1, img:null, x:item.x||20, y:item.y||20, scale:item.scale||1, z: ++zTop });
+      }
+      boards.set(code, board);
+      renderBoard(code);
+      updateSum(code);
+      if((viewState[code]||'grid')==='list') renderArmyList(code);
+    }
+  }catch{}
+}
+
+/* helper */
+function byId(id){ return document.getElementById(id); }
+</script>
+
+
+<!-- Offline dataset placeholder (optional). 
+Paste JSON array of units inside this tag to ship file with built-in data. -->
+<script id="EMBED_UNITS" type="application/json"></script>
+</body>
+
+</html>
+<style>
+/* Force right-edge alignment for action areas */
+.stats-actions{display:grid;grid-template-columns:1fr auto;align-items:center;width:100%}
+.stats-actions .actions{justify-self:end;display:flex;gap:8px;align-items:center}
+.ability-actions{display:grid;grid-template-columns:1fr auto;align-items:center;width:100%}
+.ability-actions .actions{justify-self:end;display:flex;gap:8px;align-items:center}
+</style>
